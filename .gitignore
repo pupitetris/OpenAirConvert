@@ -1,3 +1,14 @@
+# OS generated files
+.DS_Store?
+ehthumbs.db
+Icon?
+Thumbs.db
+
+# Backups
+*~
+*.bak
+*#
+
 /blib/
 /.build/
 _build/
