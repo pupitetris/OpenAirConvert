@@ -1,4 +1,4 @@
-package OpenAir::LatLon;
+package OpenAir::Point;
 
 use namespace::autoclean;
 use Moose;

@@ -29,7 +29,7 @@ use MooseX::ClassAttribute;
 use Moose::Util::TypeConstraints;
 
 use OpenAir::Altitude;
-use OpenAir::LatLon;
+use OpenAir::Point;
 use OpenAir::Degree;
 
 %OpenAir::CLASS_TYPES = (
@@ -257,7 +257,7 @@ sub _parseCoord {
     my $val = shift;
 
     if ($val =~ /([0-9]+):([0-9]+(\.[0-9]+)?)(:([0-9]+(\.[0-9]+)?))? ?([NS]) ?([0-9]+):([0-9]+(\.[0-9]+)?)(:([0-9]+(\.[0-9]+)?))? ?([EW])/) {
-	my $coord = OpenAir::LatLon->new (
+	my $coord = OpenAir::Point->new (
 	    lat => OpenAir::Degree->new (
 		sign => ($7 eq 'S')? '-': '+',
 		deg => $1,
@@ -391,7 +391,7 @@ sub _parseVar {
 	    if ($val eq '+') {
 		$v = 'CW';
 	    } elsif ($val eq '-') {
-		$v = 'ACW';
+		$v = 'CCW';
 	    } else {
 		$self->carp ('Unrecognized direction value');
 	    }
