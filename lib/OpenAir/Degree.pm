@@ -2,35 +2,28 @@ package OpenAir::Degree;
 
 use namespace::autoclean;
 use Moose;
-use Moose::Util::TypeConstraints;
-
-subtype 'PositiveNum',
-    as 'Num',
-    where { $_ >= 0 };
-
-enum 'DegreeSign', [qw (+ -)];
 
 has 'sign' => (
     is => 'rw',
-    isa => 'DegreeSign',
+    isa => 'OpenAir::DegreeSign',
     default => '+'
     );
 
 has 'deg' => (
     is => 'rw',
-    isa => 'PositiveNum',
+    isa => 'OpenAir::PositiveNum',
     default => 0
     );
 
 has 'min' => (
     is => 'rw',
-    isa => 'PositiveNum',
+    isa => 'OpenAir::PositiveNum',
     default => 0
     );
 
 has 'sec' => (
     is => 'rw',
-    isa => 'PositiveNum',
+    isa => 'OpenAir::PositiveNum',
     default => 0
     );
 

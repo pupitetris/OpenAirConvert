@@ -26,11 +26,16 @@ use String::Strip;
 use namespace::autoclean;
 use Moose;
 use MooseX::ClassAttribute;
-use Moose::Util::TypeConstraints;
 
+use OpenAir::Types;
+use OpenAir::Vars;
 use OpenAir::Altitude;
-use OpenAir::Point;
 use OpenAir::Degree;
+
+use OpenAir::Point;
+use OpenAir::Circle;
+use OpenAir::Arc;
+use OpenAir::Airway;
 
 %OpenAir::CLASS_TYPES = (
     R => 'Restricted',
@@ -65,14 +70,6 @@ use OpenAir::Degree;
     CYA => 'F',
     );
 
-%OpenAir::DRAWCMD_TYPENAMES => (
-    DP => 'POINT',
-    DA => 'ARC',
-    DB => 'ARC3P',
-    DC => 'CIRCLE',
-    DY => 'AIRWAY'
-    );
-
 class_has CLASS_TYPES => (
     is => 'ro',
     isa => 'HashRef[Str]',
@@ -88,7 +85,7 @@ has _status => (
 	POP => { UNK => { APT => {} } },
 	STATE => {},
 	AIRSPACE => [],
-	VAR => { _refs => 0 },
+	VARS => OpenAir::Vars->new ()
 	} 
     },
     init_arg => undef
@@ -120,11 +117,9 @@ has classes => (
     init_arg => undef
     );
 
-enum 'MetaStatus', ['LOG', 'TODO', 'ISSUE', 'NOTE', 'DESC'];
-
 has _metaStatus => (
     is => 'rw',
-    isa => 'Maybe[MetaStatus]',
+    isa => 'Maybe[OpenAir::MetaStatus]',
     init_arg => undef,
     clearer => '_clearMetaStatus',
     predicate => '_hasMetaStatus'
@@ -252,12 +247,12 @@ sub _parseAngle {
     return undef;
 }
 
-sub _parseCoord {
+sub _parsePoint {
     my $self = shift;
     my $val = shift;
 
     if ($val =~ /([0-9]+):([0-9]+(\.[0-9]+)?)(:([0-9]+(\.[0-9]+)?))? ?([NS]) ?([0-9]+):([0-9]+(\.[0-9]+)?)(:([0-9]+(\.[0-9]+)?))? ?([EW])/) {
-	my $coord = OpenAir::Point->new (
+	my $point = OpenAir::Point->new (
 	    lat => OpenAir::Degree->new (
 		sign => ($7 eq 'S')? '-': '+',
 		deg => $1,
@@ -268,17 +263,10 @@ sub _parseCoord {
 		deg => $8,
 		min => $9,
 		sec => $12 ));
-	return $coord;
+	return $point;
     }
     $self->carp ('Bad coordinate format ' . $val);
     return undef;
-}
-
-sub _parsePoint {
-    my $self = shift;
-    my $args = shift;
-
-    return { COORD => $self->_parseCoord ($args) };
 }
 
 sub _parseArc {
@@ -291,11 +279,11 @@ sub _parseArc {
 	return undef;
     }
 
-    return {
-	RADIUS => $self->_parseNum ($args[0]),
-	ANG_START => $self->_parseAngle ($args[1]),
-	ANG_END => $self->_parseAngle ($args[2])
-    };
+    return OpenAir::Arc->new (
+	radius => $self->_parseNum ($args[0]),
+	angleStart => $self->_parseAngle ($args[1]),
+	angleEnd => $self->_parseAngle ($args[2])
+	);
 }
 
 sub _parseArcByCoord {
@@ -308,24 +296,24 @@ sub _parseArcByCoord {
 	return undef;
     }
 
-    return {
-	COORD1 => $self->_parseCoord ($args[0]),
-	COORD2 => $self->_parseCoord ($args[1])
-    };
+    return OpenAir::Arc->new (
+	pointA => $self->_parsePoint ($args[0]),
+	pointB => $self->_parsePoint ($args[1])
+	);
 }
 
 sub _parseCircle {
     my $self = shift;
     my $args = shift;
 
-    return { RADIUS => $self->_parseNum ($args) };
+    return OpenAir::Circle->new ( radius => $self->_parseNum ($args) );
 }
 
 sub _parseAirway {
     my $self = shift;
     my $args = shift;
 
-    return { COORD => $self->_parseCoord ($args) };
+    return OpenAir::Airway->new ( point => $self->_parsePoint ($args) );
 }
 
 sub _parseDraw {
@@ -346,9 +334,7 @@ sub _parseDraw {
     }
 
     if ($ele) {
-	$ele->{TYPE} = $OpenAir::DRAWCMD_TYPENAMES{$cmd};
-	$ele->{VAR} = $self->_status->{VAR};
-	$self->_status->{VAR}{_refs} ++;
+	$ele->vars ($self->_status->{VARS});
 	push $self->_status->{AIRSPACE_CURR}{ELE}, $ele;
     }
 }
@@ -356,7 +342,7 @@ sub _parseDraw {
 sub _cloneVars {
     my $self = shift;
 
-    my $vars = $self->_status->{VAR};
+    my $vars = $self->_status->{VARS};
 
     my $new = {};
     foreach my $k (keys %$vars) {
@@ -387,7 +373,7 @@ sub _parseVar {
 
     switch ($var) {
 	case 'D' {
-	    $k = 'DIR';
+	    $k = 'dir';
 	    if ($val eq '+') {
 		$v = 'CW';
 	    } elsif ($val eq '-') {
@@ -397,15 +383,15 @@ sub _parseVar {
 	    }
 	}
 	case 'X' {
-	    $k = 'CENTER';
-	    $v = $self->_parseCoord ($val);
+	    $k = 'center';
+	    $v = $self->_parsePoint ($val);
 	}
 	case 'W' {
-	    $k = 'AW_WIDTH';
+	    $k = 'airwayWidth';
 	    $v = $self->_parseNum ($val);
 	}
 	case 'Z' {
-	    $k = 'ZOOM'; 
+	    $k = 'zoom'; 
 	    $v = $self->_parseNum ($val);
 	}
 	else {
@@ -415,28 +401,33 @@ sub _parseVar {
 
     return if (! defined $k || ! defined $v);
 
-    my $vars = $self->_status->{VAR};
+    my $vars = $self->_status->{VARS};
+    my $attr = $vars->meta->get_attribute ($k);
 
     # If value assigned is equal to the old one, do nothing.
-    if ($k eq 'CENTER') {
-	if ($v->eq ($vars->{'CENTER'})) {
+    if ($k eq 'center') {
+	if ($v->eq ($vars->center)) {
 	    return;
 	}
     } else {
-	if (defined $vars->{$k} && $v eq $vars->{$k}) {
+	my $orig = $attr->get_value ($vars);
+	if (defined $orig && $v eq $orig) {
 	    return;
 	}
     }
 
-    # If the vars context has already been used by an element, clone.
-    if ($vars->{_refs} > 0) {
-	my $new = $self->_cloneVars ();
+    # If the vars context has already been used by an element, copy.
+    if ($vars->refs > 0) {
+	my $new = $vars->copy ();
 
 	# Assign parsed value to corresponding key.
-	$new->{$k} = $v;
+	$attr->set_value ($new, $v);
 
-	# Use cloned context as current one.
-	$self->_status->{VAR} = $new;
+	# Use copied context as current one.
+	$self->_status->{VARS} = $new;
+    } else {
+	# Just assign the new value to the current context.
+	$attr->set_value ($vars, $v);
     }
 }
 
@@ -473,7 +464,7 @@ sub _parseCommand {
 	    $self->_status->{AIRSPACE_CURR}{NAME} = $args;
 	}
 	case 'AT' {
-	    if (my $coord = $self->_parseCoord ($args)) {
+	    if (my $coord = $self->_parsePoint ($args)) {
 		my $arr = $self->_status->{AIRSPACE_CURR}{TEXT_COORD};
 		if (!$arr) {
 		    $arr = [];

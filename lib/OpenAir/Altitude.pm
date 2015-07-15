@@ -2,24 +2,19 @@ package OpenAir::Altitude;
 
 use namespace::autoclean;
 use Moose;
-use Moose::Util::TypeConstraints;
 
 extends 'OpenAir::Distance';
 
-enum 'AltitudeType', ['STD', 'MSL', 'AGL'];
-
 has 'type' => (
     is => 'rw',
-    isa => 'AltitudeType',
+    isa => 'OpenAir::AltitudeType',
     trigger => \&_typeSet,
     default => 'MSL'
     );
 
-enum 'AltitudeFlag', ['UNLIM', 'SFC'];
-
 has 'flag' => (
     is => 'rw',
-    isa => 'Maybe[AltitudeFlag]',
+    isa => 'Maybe[OpenAir::AltitudeFlag]',
     trigger => \&_flagSet,
     clearer => 'clearFlag',
     default => undef
