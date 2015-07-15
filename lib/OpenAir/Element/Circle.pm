@@ -1,13 +1,13 @@
-package OpenAir::Airway;
+package OpenAir::Element::Circle;
 
 use namespace::autoclean;
 use Moose;
 
 extends 'OpenAir::Element';
 
-has 'point' => (
+has 'radius' => (
     is => 'rw',
-    isa => 'OpenAir::Point',
+    isa => 'OpenAir::PositiveNum',
     required => 1
     );
 

@@ -1,4 +1,4 @@
-package OpenAir::Point;
+package OpenAir::Element::Point;
 
 use namespace::autoclean;
 use Moose;

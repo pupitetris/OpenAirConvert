@@ -1,9 +1,9 @@
-package OpenAir::Arc;
+package OpenAir::Element::Arc;
 
 use namespace::autoclean;
 use Moose;
 
-use OpenAir::Point;
+use OpenAir::Element::Point;
 
 extends 'OpenAir::Element';
 
@@ -27,13 +27,13 @@ has 'angleEnd' => (
 
 has 'pointA' => (
     is => 'rw',
-    isa => 'Maybe[OpenAir::Point]',
+    isa => 'Maybe[OpenAir::Element::Point]',
     default => undef
     );
 
 has 'pointB' => (
     is => 'rw',
-    isa => 'Maybe[OpenAir::Point]',
+    isa => 'Maybe[OpenAir::Element::Point]',
     default => undef
     );
 

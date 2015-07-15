@@ -32,10 +32,10 @@ use OpenAir::Vars;
 use OpenAir::Altitude;
 use OpenAir::Degree;
 
-use OpenAir::Point;
-use OpenAir::Circle;
-use OpenAir::Arc;
-use OpenAir::Airway;
+use OpenAir::Element::Point;
+use OpenAir::Element::Circle;
+use OpenAir::Element::Arc;
+use OpenAir::Element::Airway;
 
 %OpenAir::CLASS_TYPES = (
     R => 'Restricted',
@@ -252,7 +252,7 @@ sub _parsePoint {
     my $val = shift;
 
     if ($val =~ /([0-9]+):([0-9]+(\.[0-9]+)?)(:([0-9]+(\.[0-9]+)?))? ?([NS]) ?([0-9]+):([0-9]+(\.[0-9]+)?)(:([0-9]+(\.[0-9]+)?))? ?([EW])/) {
-	my $point = OpenAir::Point->new (
+	my $point = OpenAir::Element::Point->new (
 	    lat => OpenAir::Degree->new (
 		sign => ($7 eq 'S')? '-': '+',
 		deg => $1,
@@ -279,7 +279,7 @@ sub _parseArc {
 	return undef;
     }
 
-    return OpenAir::Arc->new (
+    return OpenAir::Element::Arc->new (
 	radius => $self->_parseNum ($args[0]),
 	angleStart => $self->_parseAngle ($args[1]),
 	angleEnd => $self->_parseAngle ($args[2])
@@ -296,7 +296,7 @@ sub _parseArcByCoord {
 	return undef;
     }
 
-    return OpenAir::Arc->new (
+    return OpenAir::Element::Arc->new (
 	pointA => $self->_parsePoint ($args[0]),
 	pointB => $self->_parsePoint ($args[1])
 	);
@@ -306,14 +306,18 @@ sub _parseCircle {
     my $self = shift;
     my $args = shift;
 
-    return OpenAir::Circle->new ( radius => $self->_parseNum ($args) );
+    return OpenAir::Element::Circle->new ( 
+	radius => $self->_parseNum ($args) 
+	);
 }
 
 sub _parseAirway {
     my $self = shift;
     my $args = shift;
 
-    return OpenAir::Airway->new ( point => $self->_parsePoint ($args) );
+    return OpenAir::Element::Airway->new ( 
+	point => $self->_parsePoint ($args) 
+	);
 }
 
 sub _parseDraw {

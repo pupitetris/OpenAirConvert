@@ -5,7 +5,7 @@ use Moose;
 
 with qw(MooseX::Clone);
 
-use OpenAir::Point;
+use OpenAir::Element::Point;
 
 has 'dir' => (
     is => 'rw',
@@ -16,7 +16,7 @@ has 'dir' => (
 
 has 'center' => (
     is => 'rw',
-    isa => 'Maybe[OpenAir::Point]',
+    isa => 'Maybe[OpenAir::Element::Point]',
     clearer => 'clearCenter',
     default => undef
     );
